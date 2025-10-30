@@ -1,0 +1,56 @@
+version: '3.9'
+services:
+  mongo:
+    image: mongo:6
+    container_name: vidflow_mongo
+    restart: unless-stopped
+    ports:
+      - '27017:27017'
+    volumes:
+      - mongo-data:/data/db
+
+  redis:
+    image: redis:7-alpine
+    container_name: vidflow_redis
+    restart: unless-stopped
+    ports:
+      - '6379:6379'
+
+  server:
+    build:
+      context: .
+      dockerfile: packages/server/Dockerfile.dev
+    container_name: vidflow_server
+    environment:
+      - PORT=4000
+      - MONGODB_URI=mongodb://mongo:27017/vidflow
+      - NODE_ENV=development
+      - REDIS_URL=redis://redis:6379
+      - CORS_ORIGIN=http://localhost:5173
+    ports:
+      - '4000:4000'
+    depends_on:
+      - mongo
+      - redis
+    volumes:
+      - .:/app
+      - /app/node_modules
+
+  client:
+    build:
+      context: .
+      dockerfile: packages/client/Dockerfile.dev
+    container_name: vidflow_client
+    environment:
+      - VITE_API_URL=http://localhost:4000
+      - NODE_ENV=development
+    ports:
+      - '5173:5173'
+    depends_on:
+      - server
+    volumes:
+      - .:/app
+      - /app/node_modules
+
+volumes:
+  mongo-data:

@@ -1,0 +1,19 @@
+# syntax=docker/dockerfile:1
+FROM node:20-alpine
+WORKDIR /app
+
+# Install deps first for caching
+COPY package.json package-lock.json ./
+COPY packages/shared/package.json ./packages/shared/
+COPY packages/server/package.json ./packages/server/
+RUN npm ci --ignore-scripts
+
+# Copy source
+COPY . .
+
+# Build shared and server
+RUN npm run build --workspace @vidflow/shared
+
+ENV NODE_ENV=development
+EXPOSE 4000
+CMD ["npm", "run", "dev", "--workspace", "@vidflow/server"]
