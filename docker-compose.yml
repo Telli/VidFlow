@@ -1,0 +1,68 @@
+version: '3.8'
+
+services:
+  mongodb:
+    image: mongo:7
+    container_name: vidflow-mongodb
+    restart: unless-stopped
+    ports:
+      - '27017:27017'
+    volumes:
+      - mongodb_data:/data/db
+    environment:
+      MONGO_INITDB_DATABASE: vidflow
+
+  redis:
+    image: redis:7-alpine
+    container_name: vidflow-redis
+    restart: unless-stopped
+    ports:
+      - '6379:6379'
+    volumes:
+      - redis_data:/data
+
+  server:
+    build:
+      context: ./packages/server
+      dockerfile: Dockerfile
+    container_name: vidflow-server
+    restart: unless-stopped
+    ports:
+      - '3001:3001'
+    environment:
+      NODE_ENV: development
+      PORT: 3001
+      MONGODB_URI: mongodb://mongodb:27017/vidflow
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      JWT_SECRET: your-super-secret-jwt-key-change-this
+      JWT_REFRESH_SECRET: your-super-secret-refresh-key-change-this
+      ENCRYPTION_KEY: your-32-byte-encryption-key-change
+      CORS_ORIGIN: http://localhost:5173
+    depends_on:
+      - mongodb
+      - redis
+    volumes:
+      - ./packages/server:/app
+      - /app/node_modules
+
+  client:
+    build:
+      context: ./packages/client
+      dockerfile: Dockerfile
+    container_name: vidflow-client
+    restart: unless-stopped
+    ports:
+      - '5173:5173'
+    environment:
+      VITE_API_URL: http://localhost:3001
+      VITE_WS_URL: ws://localhost:3001
+    depends_on:
+      - server
+    volumes:
+      - ./packages/client:/app
+      - /app/node_modules
+
+volumes:
+  mongodb_data:
+  redis_data:
